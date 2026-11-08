@@ -9,13 +9,11 @@
 [![Tests](https://img.shields.io/badge/Tests-13%20Passed-success)](#testing)
 [![Deployment](https://img.shields.io/badge/Deployment-Render%20Live-brightgreen)](https://mcp-consist-solana.onrender.com)
 
-<p align="center">
-  <a href="https://mcp-consist-solana.onrender.com"><strong>Live Web Demo</strong></a>
-  &nbsp; | &nbsp;
-  <a href="https://youtu.be/wjIaX1jvCbM"><strong>Demo Video</strong></a>
-  &nbsp; | &nbsp;
-  <a href="https://github.com/umairs759/mcp-consist"><strong>Original Research Engine</strong></a>
-</p>
+**Live Demo:** https://mcp-consist-solana.onrender.com
+
+**Demo Video:** https://youtu.be/wjIaX1jvCbM
+
+**Original Research Engine:** https://github.com/umairs759/mcp-consist
 
 ---
 
@@ -23,8 +21,8 @@
 
 - [Overview](#overview)
 - [The Security Problem](#the-security-problem)
-- [Core Approach: Five-Context Evaluation](#core-approach-five-context-evaluation)
-- [Architecture](#architecture)
+- [Five-Context Evaluation](#five-context-evaluation)
+- [System Architecture](#system-architecture)
 - [Decision and Enforcement Model](#decision-and-enforcement-model)
 - [Solana Devnet Integration](#solana-devnet-integration)
 - [MCP Server](#mcp-server)
@@ -33,12 +31,13 @@
 - [Technology Stack](#technology-stack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
-- [Running the Project](#running-the-project)
+- [Running the Application](#running-the-application)
 - [Environment Configuration](#environment-configuration)
 - [Testing](#testing)
 - [Render Deployment](#render-deployment)
 - [Security Considerations and Limitations](#security-considerations-and-limitations)
 - [Research Background and Attribution](#research-background-and-attribution)
+- [Project Links](#project-links)
 
 ---
 
@@ -46,9 +45,9 @@
 
 MCP-Consist is a context-aware security gateway designed to evaluate tool execution requests made by AI agents before they reach an underlying tool or service.
 
-The project focuses on a security challenge in Model Context Protocol (MCP) environments: a tool call cannot always be evaluated safely by inspecting its description, schema, or arguments independently.
+The project addresses a security challenge in Model Context Protocol (MCP) environments: a tool call cannot always be evaluated safely by examining its description, schema, or arguments independently.
 
-A request may appear technically valid while conflicting with the user's actual task or the capabilities permitted by the security policy.
+A proposed request may appear technically valid while conflicting with the user's actual task or the capabilities permitted by the security policy.
 
 MCP-Consist addresses this problem through a five-context evaluation process.
 
@@ -60,22 +59,22 @@ Before execution, the gateway evaluates:
 4. User task
 5. Proposed tool call
 
-The existing detection engine analyzes these contexts and produces an execution decision:
+The existing detection engine analyzes these contexts and produces one of four execution outcomes:
 
 - **ALLOW** — The request is permitted to proceed.
 - **WARN** — The request requires explicit approval.
 - **BLOCK** — The request is rejected before execution.
-- **ERROR** — Analysis failures and unknown outcomes are handled fail-closed.
+- **ERROR** — Analysis failures and unknown outcomes are handled using fail-closed behavior.
 
-This submission demonstrates the approach through a real, read-only Solana Devnet balance lookup using the `solana_get_balance(address)` MCP tool.
+This project demonstrates the approach through a real, read-only Solana Devnet balance lookup using the `solana_get_balance(address)` MCP tool.
 
-The project includes an MCP stdio server, a Solana JSON-RPC adapter, an enforcement gateway, a CLI demonstration, and a browser-based demonstration deployed on Render.
+The implementation includes an MCP stdio server, a Solana JSON-RPC adapter, an enforcement gateway, a CLI demonstration, automated tests, and a browser-based demonstration deployed on Render.
 
 ## The Security Problem
 
 MCP allows AI applications and agents to interact with external tools and services.
 
-However, tool availability does not automatically establish that every proposed invocation is appropriate for the user's task or authorized by the application's capability policy.
+However, making a tool available does not automatically establish that every proposed invocation is appropriate for the user's task or authorized by the application's capability policy.
 
 Consider the following example:
 
@@ -89,15 +88,15 @@ Consider the following example:
 
 The proposed operation does not match the user's requested task.
 
-A security mechanism that merely checks whether the tool exists or whether its arguments are structurally valid may miss this contextual conflict.
+A security mechanism that checks only whether a tool exists or whether its arguments are structurally valid may fail to recognize this contextual conflict.
 
-MCP-Consist places a security evaluation layer between a proposed tool invocation and its execution adapter.
+MCP-Consist introduces a security evaluation layer between a proposed tool invocation and its execution adapter.
 
-Its objective is to make the decision before the underlying operation is dispatched.
+Its objective is to evaluate the request before the underlying operation is dispatched.
 
-The Solana integration provides a concrete demonstration of this enforcement boundary using a read-only blockchain operation.
+The Solana integration provides a concrete demonstration of this enforcement boundary through a controlled, read-only blockchain operation.
 
-## Core Approach: Five-Context Evaluation
+## Five-Context Evaluation
 
 The gateway constructs a structured evaluation context containing five inputs.
 
@@ -115,9 +114,9 @@ The engine evaluates the request and returns a structured analysis result contai
 
 The gateway then enforces that decision before allowing the adapter to execute.
 
-Importantly, the five-context evaluation is performed using the existing deterministic, rule-based engine. It is not an LLM-generated security verdict.
+The current five-context evaluation uses a deterministic, rule-based engine. Security verdicts are not generated by an external LLM API.
 
-## Architecture
+## System Architecture
 
 ```mermaid
 flowchart TD
@@ -128,7 +127,7 @@ flowchart TD
     C --> E["Tool Schema"]
     C --> F["Capability Policy"]
     C --> G["User Task"]
-    C --> H["Proposed Call"]
+    C --> H["Proposed Tool Call"]
 
     D --> I["Five-Context Analysis"]
     E --> I
@@ -137,7 +136,6 @@ flowchart TD
     H --> I
 
     I --> J["Existing analyze() Engine"]
-
     J --> K{"Execution Verdict"}
 
     K -->|ALLOW| L["Solana Devnet Adapter"]
@@ -183,7 +181,7 @@ Responsibilities include:
 
 Implements the read-only MCP tool using the official Python MCP SDK.
 
-It exposes the `solana_get_balance(address)` tool over standard input/output transport.
+It exposes `solana_get_balance(address)` over standard input/output transport.
 
 **4. Solana Adapter — `gateway.py`**
 
@@ -216,7 +214,7 @@ The security gateway enforces the engine's decision before the proposed operatio
 
 ### ALLOW — Permitted Execution
 
-When the existing engine produces ALLOW, the gateway dispatches the approved balance request to the Solana Devnet adapter.
+When the existing engine produces ALLOW, the gateway dispatches the permitted balance request to the Solana Devnet adapter.
 
 The adapter performs a real `getBalance` JSON-RPC request and returns the balance in lamports and SOL.
 
@@ -324,7 +322,7 @@ The adapter includes:
 - Response structure validation.
 - Adapter dispatch tracking.
 
-The default capability policy restricts the permitted read operation to the configured Solana Devnet context.
+The default capability policy permits the configured Solana Devnet read operation.
 
 No private keys or wallet signing mechanisms are included.
 
@@ -344,7 +342,7 @@ The server exposes one read-only tool:
 solana_get_balance(address)
 ```
 
-The tool is designed to retrieve the balance of a Solana account through the security gateway.
+The tool retrieves the balance of a Solana account through the security gateway.
 
 ### Tool Interface
 
@@ -414,7 +412,7 @@ Expected behavior:
 
 The application exposes:
 
-```text
+```http
 GET /health
 ```
 
@@ -444,7 +442,7 @@ Each audit record includes information such as:
 
 Audit records are useful for inspecting the enforcement sequence and understanding why a request was allowed, paused, or rejected.
 
-The audit file uses the host filesystem. Hosted filesystem persistence depends on the deployment configuration.
+The audit file is generated at runtime. It uses the host filesystem, so hosted filesystem persistence depends on the deployment configuration.
 
 ---
 
@@ -496,8 +494,7 @@ mcp-consist-solana/
 ├── webapp.py
 ├── demo.py
 ├── requirements.txt
-├── README.md
-└── audit.jsonl
+└── README.md
 ```
 
 ### Important Files
@@ -511,7 +508,8 @@ mcp-consist-solana/
 | `mcp_consist/` | Existing detection engine |
 | `tests/` | Gateway, MCP, Devnet, and browser application tests |
 | `requirements.txt` | Python dependencies |
-| `audit.jsonl` | Local JSONL execution audit |
+
+**Runtime-generated file:** `audit.jsonl` stores execution records and may appear in the project directory after running the application.
 
 ---
 
@@ -536,7 +534,7 @@ cd mcp-consist-solana
 
 ### 2. Create a Virtual Environment
 
-Linux/macOS:
+**Linux/macOS:**
 
 ```bash
 python -m venv .venv
@@ -544,7 +542,7 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-Windows:
+**Windows:**
 
 ```powershell
 python -m venv .venv
@@ -560,7 +558,7 @@ pip install -r requirements.txt
 
 ---
 
-## Running the Project
+## Running the Application
 
 ### Run the MCP Server
 
@@ -618,7 +616,7 @@ export SOLANA_RPC_URL="https://api.devnet.solana.com"
 export MCP_CONSIST_AUDIT_LOG="audit.jsonl"
 ```
 
-The configured RPC endpoint must satisfy the adapter's HTTPS and endpoint restrictions. The default policy is designed around the public Devnet endpoint.
+The configured RPC endpoint must satisfy the adapter's HTTPS and endpoint restrictions. The default capability policy is designed around the public Devnet endpoint.
 
 Never place private keys, wallet credentials, or other secrets in public configuration files.
 
@@ -636,31 +634,31 @@ python -m pytest -q
 
 ### Run Specific Test Groups
 
-Gateway tests:
+**Gateway tests:**
 
 ```bash
 python -m pytest -q tests/test_gateway.py
 ```
 
-Solana Devnet smoke test:
+**Solana Devnet smoke test:**
 
 ```bash
 python -m pytest -q tests/test_devnet.py
 ```
 
-MCP SDK invocation:
+**MCP SDK invocation:**
 
 ```bash
 python -m pytest -q tests/test_mcp_invocation.py
 ```
 
-MCP stdio transport:
+**MCP stdio transport:**
 
 ```bash
 python -m pytest -q tests/test_mcp_transport.py
 ```
 
-Browser application:
+**Browser application:**
 
 ```bash
 python -m pytest -q tests/test_webapp.py
@@ -680,11 +678,11 @@ The expanded test suite was run after the browser application was added.
 | Failed tests | 0 |
 | Test warnings | 1 |
 | Git staged diff whitespace check | Passed |
-| Render deployment | Live |
+| Render deployment | Live at documented deployment |
 
 The reported test warning concerns the deprecation of using `httpx` with Starlette's `TestClient`; it did not cause the test suite to fail.
 
-These results describe the local verification run. They should not be interpreted as proof of continuous production monitoring or a guarantee that external RPC services are always available.
+These results describe the reported local verification run. They should not be interpreted as proof of continuous production monitoring or a guarantee that external RPC services are always available.
 
 ---
 
@@ -698,19 +696,19 @@ https://mcp-consist-solana.onrender.com
 
 ### Deployment Configuration
 
-Build Command:
+**Build Command:**
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Start Command:
+**Start Command:**
 
 ```bash
 uvicorn webapp:app --host 0.0.0.0 --port $PORT
 ```
 
-Health Check Path:
+**Health Check Path:**
 
 ```text
 /health
@@ -784,7 +782,8 @@ The core MCP-Consist detection engine predates the Solana Hackathon.
 
 It is available in the original research repository:
 
-**Original Repository:**  
+**Original Repository:**
+
 https://github.com/umairs759/mcp-consist
 
 The `mcp_consist/` package in this submission is included from that existing project unchanged.
@@ -811,10 +810,10 @@ The implementation is intentionally documented as a combination of pre-existing 
 
 | Resource | Link |
 |---|---|
-| Hackathon Implementation | https://github.com/umairs759/mcp-consist-solana |
-| Original Research Engine | https://github.com/umairs759/mcp-consist |
-| Live Web Demonstration | https://mcp-consist-solana.onrender.com |
-| Demo Video | https://youtu.be/wjIaX1jvCbM |
+| Hackathon Implementation | [mcp-consist-solana](https://github.com/umairs759/mcp-consist-solana) |
+| Original Research Engine | [mcp-consist](https://github.com/umairs759/mcp-consist) |
+| Live Web Demonstration | [Open Live Demo](https://mcp-consist-solana.onrender.com) |
+| Demo Video | [Watch on YouTube](https://youtu.be/wjIaX1jvCbM) |
 
 ---
 
