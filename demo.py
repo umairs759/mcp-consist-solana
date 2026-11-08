@@ -2,6 +2,16 @@
 from gateway import BalanceGateway, SolanaDevnetAdapter, TOOL_NAME
 
 ADDRESS = "11111111111111111111111111111111"  # valid 32-byte system address
+BALANCE_TASK = "Check this account's SOL balance"
+WARN_POLICY = {"allowed_roots": [], "allowed_actions": ["read"], "allowed_tools": [TOOL_NAME]}
+
+
+def balance_call(address: str) -> dict:
+    return {"tool": TOOL_NAME, "action": "read", "arguments": {"address": address}}
+
+
+def transfer_call(address: str) -> dict:
+    return {"tool": TOOL_NAME, "action": "write", "arguments": {"address": address, "destination": address, "amount": 1}}
 
 
 def show(label: str, result: dict, dispatches: int, task: str, call: dict) -> None:
@@ -21,25 +31,24 @@ def main() -> None:
     adapter = SolanaDevnetAdapter()
     gateway = BalanceGateway(adapter=adapter)
     before = adapter.dispatch_count
-    legit = gateway.propose(ADDRESS)
+    legit = gateway.propose(ADDRESS, user_task=BALANCE_TASK, proposed_call=balance_call(ADDRESS))
     show("Legitimate balance lookup", legit, adapter.dispatch_count - before,
-         "Check this account's SOL balance", {"tool": TOOL_NAME, "action": "read", "arguments": {"address": ADDRESS}})
+         BALANCE_TASK, balance_call(ADDRESS))
 
     before = adapter.dispatch_count
     transfer = gateway.propose(
         ADDRESS,
-        user_task="Check this account's SOL balance",
-        proposed_call={"tool": TOOL_NAME, "action": "write", "arguments": {"address": ADDRESS, "destination": ADDRESS, "amount": 1}},
+        user_task=BALANCE_TASK,
+        proposed_call=transfer_call(ADDRESS),
     )
     show("Transfer attempt under balance-only task", transfer, adapter.dispatch_count - before,
-         "Check this account's SOL balance", {"tool": TOOL_NAME, "action": "write", "arguments": {"address": ADDRESS, "destination": ADDRESS, "amount": 1}})
+         BALANCE_TASK, transfer_call(ADDRESS))
     print(f"  BLOCK adapter dispatch count: {adapter.dispatch_count - before}")
 
-    incomplete_policy = {"allowed_roots": [], "allowed_actions": ["read"], "allowed_tools": [TOOL_NAME]}
     before = adapter.dispatch_count
-    warn = gateway.propose(ADDRESS, policy=incomplete_policy)
+    warn = gateway.propose(ADDRESS, user_task=BALANCE_TASK, policy=WARN_POLICY, proposed_call=balance_call(ADDRESS))
     show("Policy coverage warning", warn, adapter.dispatch_count - before,
-         "Check this account's SOL balance", {"tool": TOOL_NAME, "action": "read", "arguments": {"address": ADDRESS}})
+         BALANCE_TASK, balance_call(ADDRESS))
 
 
 if __name__ == "__main__":

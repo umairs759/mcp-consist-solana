@@ -22,16 +22,33 @@ python demo.py                   # CLI scenarios; legitimate case makes a real D
 
 The MCP server exposes only `solana_get_balance(address)`. Its tool result reports `approval required` with an approval ID for a WARN. Approval is intentionally an in-process gateway API; this server does not expose a second MCP approval tool.
 
+### Browser demo
+
+```bash
+uvicorn webapp:app --host 0.0.0.0 --port "${PORT:-8000}"
+```
+
+Open `http://localhost:8000`. The dashboard uses the same scenario builders as `demo.py` and the same `BalanceGateway`; ALLOW performs a real Devnet read, BLOCK shows the engine findings and per-request dispatch delta, and WARN stays pending until the approval button is clicked. The browser API is limited to three fixed scenarios and approval of an existing pending balance request.
+
+Render Web Service commands:
+
+- Build: `pip install -r requirements.txt`
+- Start: `uvicorn webapp:app --host 0.0.0.0 --port $PORT`
+- Health check path: `/health`
+
+The project is prepared for Render but has not been deployed; no public URL is claimed.
+
 ## Tests
 
 ```bash
 pytest -q                       # complete suite, including the live Devnet smoke test
 pytest -q tests/test_gateway.py   # deterministic unit tests with a mocked adapter
 pytest -q tests/test_devnet.py    # separate live Devnet smoke test; requires network
+pytest -q tests/test_webapp.py    # browser routes and scenarios, using a mocked adapter
 ```
 
-Verified in this environment: `pytest -q` — 8 passed, including five mocked-gateway tests, an MCP tool invocation through the official SDK with a mocked adapter, an MCP stdio handshake/tool listing, and one separate real Devnet `getBalance` smoke test. `python demo.py` also completed an ALLOW balance lookup against Devnet and showed BLOCK with zero dispatches and WARN with no pre-approval dispatch.
+Verified before adding the browser layer: `pytest -q` — 8 passed, including five mocked-gateway tests, an MCP tool invocation through the official SDK with a mocked adapter, an MCP stdio handshake/tool listing, and one separate real Devnet `getBalance` smoke test. `python demo.py` also completed an ALLOW balance lookup against Devnet and showed BLOCK with zero dispatches and WARN with no pre-approval dispatch. Browser route results are reported after running the expanded suite.
 
 ## Limitations
 
-This is a research prototype, not a production security boundary. The engine is deterministic and rule-based; it is not an LLM, does not guarantee detection, and does not provide complete JSON Schema validation. The approval API is local/in-process and has no persistent approval workflow. RPC availability and returned balances depend on Devnet. The MCP server uses stdio transport and does not provide a browser UI or hosted demo.
+This is a research prototype, not a production security boundary. The engine is deterministic and rule-based; it is not an LLM, does not guarantee detection, and does not provide complete JSON Schema validation. Approval state is held in process memory, and the audit file uses the host filesystem, which may be ephemeral on a hosted instance. RPC availability and returned balances depend on Devnet. The browser demo calls the same gateway in the web process; it is not an MCP-over-HTTP client. The MCP server remains a separate stdio process.
